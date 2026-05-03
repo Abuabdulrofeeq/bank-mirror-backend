@@ -148,17 +148,7 @@ def start_worker():
                     console.print(f"[bold red]Processing Error: {e}[/bold red]")
 
             time.sleep(10)
-def admin_portal():
-    print("\n--- 🔐 BANK MIRROR ADMIN PORTAL ---")
-    pin = input("Enter Admin PIN: ")
-    if pin == "0000":
-        print("\n--- 📊 BUSINESS REPORT ---")
-        rev, count = get_historical_stats()
-        print(f"Total Alerts Processed: {count}")
-        print(f"Total Lifetime Revenue: ₦{rev:,.2f}")
-        input("\nPress Enter to return to menu...")
-    else:
-        print("❌ Invalid PIN. Access Denied.")
+
 def admin_portal():
     # 1. Define the correct PIN
     correct_pin = "1234"  # Change this to your actual secret PIN
