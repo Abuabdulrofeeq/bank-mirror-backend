@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="2GZ1g37cQ-zHIhlPi-VwrxfqYhiTeDn7D9DZ_bywd_c" />
+    <meta name="description"
+        content="Bank Mirror Hub is an advanced merchant portal for monitoring transactions, detecting fake bank alerts, and managing staff operations securely.">
+    <meta name="keywords"
+        content="Bank Mirror, Fake Alert Detection, Merchant Portal, Transaction Monitoring, Secure Payments">
+    <meta name="robots" content="index, follow">
+    <title>Bank Mirror Hub - Merchant Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <meta name="google-site-verification" content="2GZ1g37cQ-zHIhlPi-VwrxfqYhiTeDn7D9DZ_bywd_c" />
+</head>
+
+<body>
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <!-- Auth Container -->
+    <div id="auth-view" class="auth-container">
+        <div class="auth-card">
+            <div class="role-selector">
+                <button type="button" class="role-btn active" id="role-merchant"
+                    onclick="setRole('merchant')">Merchant</button>
+                <button type="button" class="role-btn" id="role-worker" onclick="setRole('worker')">Worker</button>
+            </div>
+
+            <h2 id="auth-title">Login</h2>
+            <p id="auth-subtitle">Access your Bank Mirror Dashboard</p>
+
+            <form id="auth-form" class="auth-form" onsubmit="handleAuth(event)">
+                <div class="input-group">
+                    <label for="email" id="email-label">Email</label>
+                    <input type="text" id="email" required placeholder="name@example.com">
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+
+                <div id="register-fields" class="hidden" style="display: flex; flex-direction: column; gap: 1.2rem;">
+                    <div class="input-group">
+                        <label for="bank_name">Bank Name</label>
+                        <input type="text" id="bank_name" placeholder="e.g. OPay">
+                    </div>
+                    <div class="input-group">
+                        <label for="bank_account">Account Number</label>
+                        <input type="text" id="bank_account" placeholder="e.g. 7035141339">
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-btn" id="submit-btn">Login</button>
+            </form>
+
+            <div class="auth-switch" id="auth-switch-container">
+                <span id="switch-text">Don't have an account?</span>
+                <a onclick="toggleAuthMode()" id="switch-link">Register here</a>
+            </div>
+            <p id="auth-error" style="color: #ef4444; font-size: 0.85rem; margin-top: 1rem; display: none;"></p>
+        </div>
+    </div>
+
+    <!-- Dashboard Container -->
+    <div id="dashboard-view" class="container hidden">
+        <div class="card glass">
+            <div class="header-row">
+                <div class="header">
+                    <h2 id="dashboard-title">Merchant Dashboard</h2>
+                    <span class="badge pulse">Active</span>
+                </div>
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+
+            <div class="user-info">
+                <h3>Welcome, <span id="merchant-name" class="highlight">MERCHANT</span></h3>
+                <p class="subtitle"><span id="merchant-id-label">Merchant ID: #</span><span
+                        id="merchant-id-display"></span></p>
+            </div>
+
+            <div id="sensitive-merchant-data">
+                <div class="balance-section">
+                    <p>Alerts Remaining</p>
+                    <h1 id="credits" class="gradient-text">--</h1>
+                </div>
+
+                <div class="deposit-box">
+                    <p class="instruction-title"><strong>Top Up Alerts via Monnify</strong></p>
+                    <p class="instruction-subtitle">₦1,000 for 100 Alerts</p>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <input type="number" id="topup-amount" placeholder="Amount (min 1000)" min="1000" max="20000"
+                            style="flex: 1; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--card-border); background: rgba(0,0,0,0.2); color: white;">
+                        <button onclick="initiateSubscription()" class="auth-btn"
+                            style="margin: 0; padding: 0.5rem 1rem;" id="pay-btn">Pay Now</button>
+                    </div>
+                    <p id="topup-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.5rem; display: none;">
+                    </p>
+                </div>
+
+                <div class="worker-stats">
+                    <div>
+                        <h3 style="font-size: 1.1rem;">Security & Staff</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Manage your workers</p>
+                    </div>
+                    <div class="worker-stat-item">
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">Active Workers</p>
+                        <p class="worker-stat-value" id="active-workers-count">0</p>
+                    </div>
+                    <button class="add-worker-btn" onclick="openWorkerModal()">+ Add Worker</button>
+                </div>
+            </div>
+
+            <div class="transactions-section">
+                <h3>Recent Transactions</h3>
+                <div class="table-container">
+                    <table id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-body">
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: var(--text-muted);">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Worker Modal -->
+    <div id="worker-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Add New Worker</h3>
+            <div class="input-group" style="margin-bottom: 1rem;">
+                <label>Worker Username</label>
+                <input type="text" id="new-worker-username" placeholder="e.g. cashier_1">
+            </div>
+            <div class="input-group">
+                <label>Worker Password</label>
+                <input type="password" id="new-worker-password" placeholder="••••••••">
+            </div>
+            <p id="worker-modal-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.5rem; display: none;">
+            </p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeWorkerModal()">Cancel</button>
+                <button class="auth-btn" style="margin:0; padding: 0.5rem 1rem;"
+                    onclick="createWorker()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isRegisterMode = false;
+        let selectedRole = 'merchant';
+        let lastCreditCount = null;
+        let fetchInterval = null;
+
+        // Check if already logged in
+        window.onload = () => {
+            const storedId = localStorage.getItem("merchant_id");
+            const role = localStorage.getItem("user_role");
+            if (storedId) {
+                showDashboard(storedId, role);
+            }
+        };
+
+        function setRole(role) {
+            selectedRole = role;
+            document.getElementById('role-merchant').classList.toggle('active', role === 'merchant');
+            document.getElementById('role-worker').classList.toggle('active', role === 'worker');
+
+            // Adjust UI based on role
+            if (role === 'worker') {
+                isRegisterMode = false;
+                document.getElementById('auth-switch-container').style.display = 'none';
+                document.getElementById('email-label').innerText = 'Worker Username';
+                document.getElementById('email').type = 'text';
+                document.getElementById('email').placeholder = 'e.g. cashier_1';
+            } else {
+                document.getElementById('auth-switch-container').style.display = 'block';
+                document.getElementById('email-label').innerText = 'Email';
+                document.getElementById('email').type = 'email';
+                document.getElementById('email').placeholder = 'name@example.com';
+            }
+            toggleAuthMode(true); // force login mode reset
+        }
+
+        function toggleAuthMode(forceLogin = false) {
+            if (forceLogin) isRegisterMode = false;
+            else isRegisterMode = !isRegisterMode;
+
+            document.getElementById("auth-title").innerText = isRegisterMode ? "Register" : "Login";
+            document.getElementById("auth-subtitle").innerText = isRegisterMode ? "Create a Bank Mirror account" : "Access your Bank Mirror Dashboard";
+            document.getElementById("submit-btn").innerText = isRegisterMode ? "Create Account" : "Login";
+            document.getElementById("switch-text").innerText = isRegisterMode ? "Already have an account?" : "Don't have an account?";
+            document.getElementById("switch-link").innerText = isRegisterMode ? "Login here" : "Register here";
+
+            const regFields = document.getElementById("register-fields");
+            if (isRegisterMode && selectedRole === 'merchant') {
+                regFields.classList.remove("hidden");
+                document.getElementById("bank_name").required = true;
+                document.getElementById("bank_account").required = true;
+            } else {
+                regFields.classList.add("hidden");
+                document.getElementById("bank_name").required = false;
+                document.getElementById("bank_account").required = false;
+            }
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            document.getElementById("auth-error").style.display = "none";
+            const btn = document.getElementById("submit-btn");
+            btn.innerText = "Processing...";
+
+            let endpoint = "";
+            let payload = {};
+
+            if (selectedRole === 'worker') {
+                endpoint = "/worker/login";
+                payload = {
+                    username: document.getElementById("email").value,
+                    password: document.getElementById("password").value
+                };
+            } else {
+                endpoint = isRegisterMode ? "/register" : "/login";
+                payload = {
+                    email: document.getElementById("email").value,
+                    password: document.getElementById("password").value
+                };
+                if (isRegisterMode) {
+                    payload.bank_name = document.getElementById("bank_name").value;
+                    payload.bank_account = document.getElementById("bank_account").value;
+                }
+            }
+
+            try {
+                const res = await fetch("http://127.0.0.1:8000" + endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                if (data.merchant_id) {
+                    localStorage.setItem("merchant_id", data.merchant_id);
+                    const actualRole = data.role || "merchant";
+                    localStorage.setItem("user_role", actualRole);
+
+                    if (actualRole === 'merchant') {
+                        localStorage.setItem("merchant_email", payload.email);
+                        if (!isRegisterMode) {
+                            localStorage.setItem("merchant_bank", data.bank_name);
+                            localStorage.setItem("merchant_acc", data.bank_account);
+                        } else {
+                            localStorage.setItem("merchant_bank", payload.bank_name);
+                            localStorage.setItem("merchant_acc", payload.bank_account);
+                        }
+                    } else {
+                        localStorage.setItem("merchant_email", payload.username);
+                    }
+                    showDashboard(data.merchant_id, actualRole);
+                }
+            } catch (err) {
+                document.getElementById("auth-error").innerText = err.message;
+                document.getElementById("auth-error").style.display = "block";
+                btn.innerText = isRegisterMode ? "Create Account" : "Login";
+            }
+        }
+
+        function showDashboard(merchantId, role) {
+            document.getElementById("auth-view").classList.add("hidden");
+            document.getElementById("dashboard-view").classList.remove("hidden");
+
+            const nameDisplay = localStorage.getItem("merchant_email");
+            if (nameDisplay) {
+                document.getElementById("merchant-name").innerText = nameDisplay.split('@')[0].toUpperCase();
+            }
+
+            if (role === 'worker') {
+                document.getElementById("dashboard-title").innerText = "Worker Dashboard";
+                document.getElementById("merchant-id-label").innerText = "Working for Merchant ID: #";
+                document.getElementById("merchant-id-display").innerText = merchantId;
+                document.getElementById("sensitive-merchant-data").style.display = "none";
+            } else {
+                document.getElementById("dashboard-title").innerText = "Merchant Dashboard";
+                document.getElementById("merchant-id-label").innerText = "Merchant ID: #";
+                document.getElementById("merchant-id-display").innerText = merchantId;
+                document.getElementById("sensitive-merchant-data").style.display = "block";
+                document.getElementById("display-bank").innerText = localStorage.getItem("merchant_bank") || "--";
+                document.getElementById("display-account").innerText = localStorage.getItem("merchant_acc") || "--";
+            }
+
+            updateDashboard();
+            fetchInterval = setInterval(updateDashboard, 5000);
+        }
+
+        function logout() {
+            localStorage.clear();
+            clearInterval(fetchInterval);
+            document.getElementById("dashboard-view").classList.add("hidden");
+            document.getElementById("auth-view").classList.remove("hidden");
+            document.getElementById("submit-btn").innerText = "Login";
+            document.getElementById("password").value = "";
+        }
+
+        function openWorkerModal() {
+            document.getElementById("worker-modal").classList.remove("hidden");
+        }
+
+        function closeWorkerModal() {
+            document.getElementById("worker-modal").classList.add("hidden");
+            document.getElementById("worker-modal-error").style.display = "none";
+            document.getElementById("new-worker-username").value = "";
+            document.getElementById("new-worker-password").value = "";
+        }
+
+        async function createWorker() {
+            const mId = localStorage.getItem("merchant_id");
+            const u = document.getElementById("new-worker-username").value;
+            const p = document.getElementById("new-worker-password").value;
+
+            try {
+                const res = await fetch("http://127.0.0.1:8000/worker/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ merchant_id: mId, username: u, password: p })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                alert("Worker created successfully!");
+                closeWorkerModal();
+                updateDashboard();
+            } catch (err) {
+                document.getElementById("worker-modal-error").innerText = err.message;
+                document.getElementById("worker-modal-error").style.display = "block";
+            }
+        }
+
+        async function updateDashboard() {
+            const merchantId = localStorage.getItem("merchant_id");
+            const role = localStorage.getItem("user_role");
+            if (!merchantId) return;
+
+            try {
+                if (role !== 'worker') {
+                    // Fetch Credits
+                    const creditResponse = await fetch("http://127.0.0.1:8000/api/merchant/" + merchantId);
+                    const creditData = await creditResponse.json();
+
+                    if (creditData && creditData.credits !== undefined) {
+                        const currentCredits = creditData.credits;
+                        const creditsElement = document.getElementById('credits');
+                        if (creditsElement) creditsElement.innerText = currentCredits;
+
+                        if (lastCreditCount !== null && currentCredits < lastCreditCount) {
+                            if (Notification.permission === "granted") {
+                                new Notification("Bank Mirror Alert", { body: `Alert processed! Remaining: ${currentCredits}` });
+                            }
+                        }
+                        lastCreditCount = currentCredits;
+                    }
+
+                    // Fetch Worker Stats
+                    const workerRes = await fetch("http://127.0.0.1:8000/merchant/workers/" + merchantId);
+                    const workerData = await workerRes.json();
+                    if (workerData && workerData.active !== undefined) {
+                        document.getElementById('active-workers-count').innerText = workerData.active;
+                    }
+                }
+
+                // Fetch Transactions History (Both Merchant & Worker)
+                const dashboardResponse = await fetch("http://127.0.0.1:8000/merchant/dashboard/" + merchantId);
+                const dashboardData = await dashboardResponse.json();
+
+                if (dashboardData && dashboardData.history) {
+                    const tbody = document.getElementById('transactions-body');
+                    tbody.innerHTML = '';
+
+                    if (dashboardData.history.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No transactions yet</td></tr>';
+                    } else {
+                        dashboardData.history.forEach(tx => {
+                            const dateObj = new Date(tx.timestamp);
+                            const timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const amount = parseFloat(tx.amount).toLocaleString('en-US', { style: 'currency', currency: 'NGN' });
+
+                            let statusBadge = '<span class="badge" style="font-size: 0.6rem; padding: 2px 6px; background-color: var(--success); color: white;">Verified</span>';
+                            let amountColor = 'var(--success)';
+                            if (tx.is_suspicious) {
+                                statusBadge = `<span class="badge" style="font-size: 0.6rem; padding: 2px 6px; background-color: #ef4444; color: white;" title="${tx.suspicious_reason}">Fake Alert</span>`;
+                                amountColor = '#ef4444';
+                            }
+
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${timeString}</td>
+                                    <td style="color: ${amountColor}; font-weight: 600;">${amount}</td>
+                                    <td>${statusBadge}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                }
+            } catch (err) {
+                console.log("Connecting to Bank Mirror API...");
+            }
+        }
+
+        async function initiateSubscription() {
+            const amount = document.getElementById("topup-amount").value;
+            const errorEl = document.getElementById("topup-error");
+            const btn = document.getElementById("pay-btn");
+            errorEl.style.display = "none";
+
+            if (!amount || amount < 1000 || amount > 20000) {
+                errorEl.innerText = "Amount must be between 1,000 and 20,000 NGN";
+                errorEl.style.display = "block";
+                return;
+            }
+
+            const merchantId = localStorage.getItem("merchant_id");
+            const email = localStorage.getItem("merchant_email") || "merchant@example.com";
+
+            btn.innerText = "Wait...";
+            btn.disabled = true;
+
+            try {
+                // In production, point to your backend URL (e.g. https://your-backend.onrender.com/subscribe/initiate)
+                const res = await fetch(`http://127.0.0.1:8000/subscribe/initiate?amount=${amount}&email=${email}&name=Merchant&merchant_id=${merchantId}`, {
+                    method: "POST"
+                });
+
+                const data = await res.json();
+                if (data.requestSuccessful && data.responseBody && data.responseBody.checkoutUrl) {
+                    window.location.href = data.responseBody.checkoutUrl;
+                } else {
+                    throw new Error(data.detail || data.responseMessage || "Failed to initialize payment");
+                }
+            } catch (err) {
+                errorEl.innerText = err.message;
+                errorEl.style.display = "block";
+                btn.innerText = "Pay Now";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
