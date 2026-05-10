@@ -10,7 +10,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.live import Live
 from rich import box
-
+from fastapi import FastAPI
 console = Console()
 
 def check_watch_alerts():
@@ -181,10 +181,11 @@ def check_performance_rewards(m_id):
 
 def get_merchant_transactions(m_id: str):
     conn = sqlite3.connect("bank_mirror.db")
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    query = "SELECT * FROM transactions WHERE merchant_id = ?"
+    query = "SELECT * FROM transactions WHERE merchant_id = ? ORDER BY timestamp DESC"
     cursor.execute(query, (m_id,))
-    rows = cursor.fetchall()
+    rows = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return rows
 

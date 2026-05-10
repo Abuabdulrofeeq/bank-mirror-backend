@@ -1,6 +1,13 @@
 from email.message import EmailMessage
 import smtplib
-from fastapi import FastAPI, BackgroundTasks
+import httpx
+import base64
+import time
+import hashlib
+import hmac
+import json
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
@@ -13,6 +20,11 @@ import bcrypt
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from telegram_bot import start_telegram_bot, stop_telegram_bot, notify_channel
+
+MONNIFY_API_KEY = os.getenv("MONNIFY_API_KEY", "")
+MONNIFY_SECRET_KEY = os.getenv("MONNIFY_SECRET_KEY", "")
+MONNIFY_CONTRACT_CODE = os.getenv("MONNIFY_CONTRACT_CODE", "")
+MONNIFY_BASE_URL = os.getenv("MONNIFY_BASE_URL", "https://sandbox.monnify.com")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -83,6 +95,16 @@ def init_db():
             merchant_id TEXT NOT NULL,
             login_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             last_active DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reference TEXT UNIQUE NOT NULL,
+            merchant_id TEXT NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT DEFAULT 'PENDING',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
     try:
@@ -229,7 +251,7 @@ async def get_merchant_workers(merchant_id: str):
     conn.close()
     return {"total": total_workers, "active": active_workers}
 
-@app.get("/")
+@app.get("/api")
 def home():
     return {"status": "online", "message": "Bank Mirror API is Live"}
 
@@ -336,3 +358,98 @@ async def trigger_transaction_alert(background_tasks: BackgroundTasks):
         "A new transaction has been detected on your monitored account."
     )
     return {"status": "Success", "message": "Alert processing in background"}
+
+async def get_auth_token():
+    """Generates the Bearer Token required for Monnify API calls"""
+    auth_str = f"{MONNIFY_API_KEY}:{MONNIFY_SECRET_KEY}"
+    encoded_auth = base64.b64encode(auth_str.encode()).decode()
+
+    headers = {"Authorization": f"Basic {encoded_auth}"}
+    async with httpx.AsyncClient() as client:
+        response = await client.post(f"{MONNIFY_BASE_URL}/api/v1/auth/login", headers=headers)
+        if response.status_code == 200:
+            return response.json()['responseBody']['accessToken']
+        raise HTTPException(status_code=401, detail="Failed to authenticate with Monnify")
+
+@app.post("/subscribe/initiate")
+async def initiate_subscription(amount: int, email: str, name: str, merchant_id: str):
+    # Enforce your 1,000 to 20,000 range
+    if not (1000 <= amount <= 20000):
+        raise HTTPException(status_code=400, detail="Amount must be between 1,000 and 20,000 NGN")
+
+    token = await get_auth_token()
+    ref = f"BM-{int(time.time())}"
+
+    # Log payment intent in database
+    conn = sqlite3.connect('bank_mirror.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO payments (reference, merchant_id, amount) VALUES (?, ?, ?)", (ref, merchant_id, amount))
+    conn.commit()
+    conn.close()
+
+    payload = {
+        "amount": amount,
+        "customerName": name,
+        "customerEmail": email,
+        "paymentReference": ref,
+        "paymentDescription": f"BankMirror Subscription - {amount}",
+        "currencyCode": "NGN",
+        "contractCode": MONNIFY_CONTRACT_CODE,
+        "redirectUrl": "http://127.0.0.1:8000/success", # In production, this should be frontend URL
+        "paymentMethods": ["CARD", "ACCOUNT_TRANSFER"]
+    }
+
+    headers = {"Authorization": f"Bearer {token}"}
+    async with httpx.AsyncClient() as client:
+        res = await client.post(f"{MONNIFY_BASE_URL}/api/v1/merchant/transactions/init-transaction", json=payload, headers=headers)
+        return res.json()
+
+@app.post("/monnify-webhook")
+async def monnify_webhook(request: Request):
+    payload_bytes = await request.body()
+    monnify_signature = request.headers.get("monnify-signature")
+    
+    if not monnify_signature:
+        raise HTTPException(status_code=400, detail="Missing signature")
+        
+    # Verify signature
+    computed_hash = hmac.new(
+        MONNIFY_SECRET_KEY.encode('utf-8'),
+        payload_bytes,
+        hashlib.sha512
+    ).hexdigest()
+    
+    if computed_hash != monnify_signature:
+        raise HTTPException(status_code=401, detail="Invalid signature")
+        
+    data = await request.json()
+    event_type = data.get("eventType")
+    event_data = data.get("eventData", {})
+    
+    if event_type == "SUCCESSFUL_TRANSACTION":
+        ref = event_data.get("paymentReference")
+        amount_paid = event_data.get("amountPaid")
+        
+        if ref and amount_paid:
+            conn = sqlite3.connect('bank_mirror.db')
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT merchant_id, status FROM payments WHERE reference = ?", (ref,))
+            row = cursor.fetchone()
+            
+            if row and row[1] == 'PENDING':
+                merchant_id = row[0]
+                
+                # 1,000 NGN = 100 alerts -> 10 NGN per alert
+                credits_to_add = int(float(amount_paid) / 10)
+                
+                cursor.execute("UPDATE payments SET status = 'PAID' WHERE reference = ?", (ref,))
+                cursor.execute("UPDATE merchants SET merchant_credits = merchant_credits + ? WHERE merchant_id = ?", (credits_to_add, merchant_id))
+                conn.commit()
+            
+            conn.close()
+            
+    return {"status": "ok"}
+
+# Serve the frontend web app from the "www" directory
+app.mount("/", StaticFiles(directory="www", html=True), name="static")
