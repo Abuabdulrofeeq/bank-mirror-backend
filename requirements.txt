@@ -7,3 +7,5 @@ requests
 plyer
 pydantic
 rich
+httpx
+aiofiles
