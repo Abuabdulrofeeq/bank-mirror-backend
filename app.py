@@ -18,6 +18,7 @@ import sqlite3
 import uuid
 import bcrypt
 from pydantic import BaseModel
+from typing import Optional
 from contextlib import asynccontextmanager
 from telegram_bot import start_telegram_bot, stop_telegram_bot, notify_channel
 
@@ -186,6 +187,14 @@ class WorkerCreateRequest(BaseModel):
 class WorkerLoginRequest(BaseModel):
     username: str
     password: str
+
+class NotificationPayload(BaseModel):
+    raw_text: str
+    amount: float
+    merchant_id: str
+    reference_number: Optional[str] = None
+    is_suspicious: bool = False
+    suspicious_reason: Optional[str] = None
 
 @app.post("/worker/create")
 async def create_worker(request: WorkerCreateRequest):
@@ -358,6 +367,40 @@ async def trigger_transaction_alert(background_tasks: BackgroundTasks):
         "A new transaction has been detected on your monitored account."
     )
     return {"status": "Success", "message": "Alert processing in background"}
+
+@app.post("/notifications")
+async def receive_notification(payload: NotificationPayload, background_tasks: BackgroundTasks):
+    conn = sqlite3.connect('bank_mirror.db')
+    cursor = conn.cursor()
+    
+    # 1. Check for Duplicate Reference
+    if payload.reference_number:
+        cursor.execute("SELECT id FROM transactions WHERE reference_number = ?", (payload.reference_number,))
+        if cursor.fetchone():
+            payload.is_suspicious = True
+            payload.suspicious_reason = (payload.suspicious_reason or "") + " [Backend] Duplicate reference number. "
+            
+    # 2. Save Transaction
+    cursor.execute("""
+        INSERT INTO transactions (raw_text, amount, merchant_id, reference_number, is_suspicious, suspicious_reason)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (payload.raw_text, payload.amount, payload.merchant_id, payload.reference_number, payload.is_suspicious, payload.suspicious_reason))
+    
+    # 3. Deduct Credits if Valid
+    if not payload.is_suspicious:
+        cursor.execute("SELECT merchant_credits FROM merchants WHERE merchant_id = ?", (payload.merchant_id,))
+        result = cursor.fetchone()
+        if result and result[0] > 0:
+            cursor.execute("UPDATE merchants SET merchant_credits = merchant_credits - 1 WHERE merchant_id = ?", (payload.merchant_id,))
+            
+            # Send real-time notification
+            await notify_channel(f"💰 [BANK MIRROR] New Alert Received via Bridge!\n\nAmount: ₦{payload.amount:,.2f}\nMerchant: {payload.merchant_id}\nRef: {payload.reference_number}")
+            background_tasks.add_task(trigger_desktop_notification, "Bank Mirror Alert", f"New Alert: ₦{payload.amount:,.2f} received!")
+            
+    conn.commit()
+    conn.close()
+    
+    return {"status": "Success", "message": "Notification processed"}
 
 async def get_auth_token():
     """Generates the Bearer Token required for Monnify API calls"""
