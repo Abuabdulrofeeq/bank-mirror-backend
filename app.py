@@ -113,6 +113,13 @@ def init_db():
         print("Database updated with credits column!")
     except:
         pass
+    try:
+        cursor.execute("ALTER TABLE transactions ADD COLUMN reference_number TEXT")
+        cursor.execute("ALTER TABLE transactions ADD COLUMN is_suspicious BOOLEAN DEFAULT 0")
+        cursor.execute("ALTER TABLE transactions ADD COLUMN suspicious_reason TEXT")
+        print("Database updated with fake alert columns!")
+    except:
+        pass
     conn.commit()
     conn.close()
 
