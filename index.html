@@ -29,6 +29,9 @@
     <!-- Auth Container -->
     <div id="auth-view" class="auth-container">
         <div class="auth-card">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <img src="logo.png" alt="Bank Mirror Logo" style="width: 100%; max-width: 250px; height: auto; border-radius: 8px;">
+            </div>
             <div class="role-selector">
                 <button type="button" class="role-btn active" id="role-merchant"
                     onclick="setRole('merchant')">Merchant</button>
@@ -165,6 +168,9 @@
     </div>
 
     <script>
+        // Use relative path for production so it works automatically on Render
+        window.API_BASE_URL = "";
+
         let isRegisterMode = false;
         let selectedRole = 'merchant';
         let lastCreditCount = null;
@@ -250,7 +256,7 @@
             }
 
             try {
-                const res = await fetch("http://127.0.0.1:8000" + endpoint, {
+                const res = await fetch(window.API_BASE_URL + endpoint, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
@@ -260,6 +266,8 @@
 
                 if (data.error) {
                     throw new Error(data.error);
+                } else if (data.detail) {
+                    throw new Error(typeof data.detail === 'string' ? data.detail : "Validation Error");
                 }
 
                 if (data.merchant_id) {
@@ -280,6 +288,8 @@
                         localStorage.setItem("merchant_email", payload.username);
                     }
                     showDashboard(data.merchant_id, actualRole);
+                } else {
+                    throw new Error("Unexpected response from server: Login failed.");
                 }
             } catch (err) {
                 document.getElementById("auth-error").innerText = err.message;
@@ -341,13 +351,15 @@
             const p = document.getElementById("new-worker-password").value;
 
             try {
-                const res = await fetch("http://127.0.0.1:8000/worker/create", {
+                const res = await fetch(window.API_BASE_URL + "/worker/create", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ merchant_id: mId, username: u, password: p })
                 });
                 const data = await res.json();
                 if (data.error) throw new Error(data.error);
+                if (data.detail) throw new Error(typeof data.detail === 'string' ? data.detail : "Validation Error");
+                
                 alert("Worker created successfully!");
                 closeWorkerModal();
                 updateDashboard();
@@ -365,7 +377,7 @@
             try {
                 if (role !== 'worker') {
                     // Fetch Credits
-                    const creditResponse = await fetch("http://127.0.0.1:8000/api/merchant/" + merchantId);
+                    const creditResponse = await fetch(window.API_BASE_URL + "/api/merchant/" + merchantId);
                     const creditData = await creditResponse.json();
 
                     if (creditData && creditData.credits !== undefined) {
@@ -374,7 +386,7 @@
                         if (creditsElement) creditsElement.innerText = currentCredits;
 
                         if (lastCreditCount !== null && currentCredits < lastCreditCount) {
-                            if (Notification.permission === "granted") {
+                            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
                                 new Notification("Bank Mirror Alert", { body: `Alert processed! Remaining: ${currentCredits}` });
                             }
                         }
@@ -382,7 +394,7 @@
                     }
 
                     // Fetch Worker Stats
-                    const workerRes = await fetch("http://127.0.0.1:8000/merchant/workers/" + merchantId);
+                    const workerRes = await fetch(window.API_BASE_URL + "/merchant/workers/" + merchantId);
                     const workerData = await workerRes.json();
                     if (workerData && workerData.active !== undefined) {
                         document.getElementById('active-workers-count').innerText = workerData.active;
@@ -390,11 +402,11 @@
                 }
 
                 // Fetch Transactions History (Both Merchant & Worker)
-                const dashboardResponse = await fetch("http://127.0.0.1:8000/merchant/dashboard/" + merchantId);
+                const dashboardResponse = await fetch(window.API_BASE_URL + "/merchant/dashboard/" + merchantId);
                 const dashboardData = await dashboardResponse.json();
+                const tbody = document.getElementById('transactions-body');
 
                 if (dashboardData && dashboardData.history) {
-                    const tbody = document.getElementById('transactions-body');
                     tbody.innerHTML = '';
 
                     if (dashboardData.history.length === 0) {
@@ -421,9 +433,15 @@
                             `;
                         });
                     }
+                } else if (dashboardData && dashboardData.message) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No transactions yet</td></tr>';
                 }
             } catch (err) {
-                console.log("Connecting to Bank Mirror API...");
+                console.error("Dashboard Update Error:", err);
+                const tbody = document.getElementById('transactions-body');
+                if (tbody && (tbody.innerHTML === '' || tbody.innerHTML.includes('Loading...'))) {
+                    tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #ef4444; font-size: 0.8rem;">Connection Error. Check network or clear cache.</td></tr>`;
+                }
             }
         }
 
@@ -447,7 +465,7 @@
 
             try {
                 // In production, point to your backend URL (e.g. https://your-backend.onrender.com/subscribe/initiate)
-                const res = await fetch(`http://127.0.0.1:8000/subscribe/initiate?amount=${amount}&email=${email}&name=Merchant&merchant_id=${merchantId}`, {
+                const res = await fetch(`${window.API_BASE_URL}/subscribe/initiate?amount=${amount}&email=${email}&name=Merchant&merchant_id=${merchantId}`, {
                     method: "POST"
                 });
 
