@@ -386,7 +386,7 @@
                         if (creditsElement) creditsElement.innerText = currentCredits;
 
                         if (lastCreditCount !== null && currentCredits < lastCreditCount) {
-                            if (Notification.permission === "granted") {
+                            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
                                 new Notification("Bank Mirror Alert", { body: `Alert processed! Remaining: ${currentCredits}` });
                             }
                         }
@@ -404,9 +404,9 @@
                 // Fetch Transactions History (Both Merchant & Worker)
                 const dashboardResponse = await fetch(window.API_BASE_URL + "/merchant/dashboard/" + merchantId);
                 const dashboardData = await dashboardResponse.json();
+                const tbody = document.getElementById('transactions-body');
 
                 if (dashboardData && dashboardData.history) {
-                    const tbody = document.getElementById('transactions-body');
                     tbody.innerHTML = '';
 
                     if (dashboardData.history.length === 0) {
@@ -433,9 +433,15 @@
                             `;
                         });
                     }
+                } else if (dashboardData && dashboardData.message) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No transactions yet</td></tr>';
                 }
             } catch (err) {
-                console.log("Connecting to Bank Mirror API...");
+                console.error("Dashboard Update Error:", err);
+                const tbody = document.getElementById('transactions-body');
+                if (tbody && (tbody.innerHTML === '' || tbody.innerHTML.includes('Loading...'))) {
+                    tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #ef4444; font-size: 0.8rem;">Connection Error. Check network or clear cache.</td></tr>`;
+                }
             }
         }
 

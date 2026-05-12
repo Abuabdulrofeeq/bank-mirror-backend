@@ -78,7 +78,8 @@ body {
     padding: 2.5rem;
     border-radius: 24px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-    width: 380px;
+    width: 92vw;
+    max-width: 800px;
     border: 1px solid var(--card-border);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -259,7 +260,7 @@ h3 {
     border-radius: 12px;
     padding: 0.5rem;
     overflow-y: auto;
-    max-height: 150px;
+    max-height: 400px;
 }
 
 #transactions-table {
