@@ -1,15 +1,8 @@
 import os
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, ContextTypes
 
 telegram_app = None
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_text = "Welcome to Bank Mirror Bot! 🏦\nI will instantly notify you of all transactions."
-    await update.message.reply_text(welcome_text)
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    print(f"Telegram Bot error suppressed: {context.error}")
 
 async def notify_channel(message: str):
     global telegram_app
@@ -28,27 +21,23 @@ async def start_telegram_bot():
         return
         
     telegram_app = ApplicationBuilder().token(token).build()
-    telegram_app.add_handler(CommandHandler("start", start))
     
-    # Add error handler to prevent asyncio loop from crashing
-    telegram_app.add_error_handler(error_handler)
-    
-    # Initialize and start the application in the existing event loop
+    # Initialize the application so bot.send_message works, but do NOT start polling!
+    # This prevents the 'Conflict: terminated by other getUpdates request' error
+    # allowing both local and Render servers to run simultaneously in send-only mode.
     try:
         await telegram_app.initialize()
         await telegram_app.start()
-        await telegram_app.updater.start_polling()
-        print("Telegram Bot Polling Started!")
+        print("Telegram Bot initialized in Send-Only mode (Polling disabled to prevent conflicts).")
     except Exception as e:
-        print(f"Failed to start Telegram Bot polling: {e}")
+        print(f"Failed to initialize Telegram Bot: {e}")
 
 async def stop_telegram_bot():
     global telegram_app
     if telegram_app:
         try:
-            await telegram_app.updater.stop()
             await telegram_app.stop()
             await telegram_app.shutdown()
         except Exception:
             pass
-        print("Telegram Bot Polling Stopped.")
+        print("Telegram Bot shutdown complete.")
