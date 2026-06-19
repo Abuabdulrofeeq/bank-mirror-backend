@@ -76,89 +76,112 @@
 
     <!-- Dashboard Container -->
     <div id="dashboard-view" class="container hidden">
-        <div class="card glass">
-            <div class="header-row">
-                <div class="header">
-                    <h2 id="dashboard-title">Merchant Dashboard</h2>
-                    <span class="badge pulse">Active</span>
-                </div>
-                <button onclick="logout()" class="logout-btn">Logout</button>
-            </div>
-
-            <div class="user-info">
-                <h3>Welcome, <span id="merchant-name" class="highlight">MERCHANT</span></h3>
-                <p class="subtitle" id="merchant-email-container">
-                    <span id="merchant-email-label">Email: </span><span id="merchant-email-display" class="highlight"></span>
-                </p>
-                <p class="subtitle" id="merchant-bank-container" style="display: none;">
-                    <span id="merchant-bank-label">Bank: </span><span id="display-bank" class="highlight">--</span>
-                </p>
-                <p class="subtitle" id="merchant-account-container" style="display: none;">
-                    <span id="merchant-account-label">Account: </span><span id="display-account" class="highlight">--</span>
-                </p>
-                <p class="subtitle">
-                    <span id="merchant-id-label">Merchant ID: #</span><span id="merchant-id-display"></span>
-                </p>
-            </div>
-
-            <div id="sensitive-merchant-data">
-                <div class="balance-section">
-                    <p>Alerts Remaining</p>
-                    <h1 id="credits" class="gradient-text">--</h1>
-                </div>
-
-                <div class="deposit-box">
-                    <p class="instruction-title"><strong>Top Up Alerts via Monnify</strong></p>
-                    <p class="instruction-subtitle">₦1,000 for 100 Alerts</p>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <input type="number" id="topup-amount" placeholder="Amount (min 1000)" min="1000" max="20000"
-                            style="flex: 1; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--card-border); background: rgba(0,0,0,0.2); color: white;">
-                        <button onclick="initiateSubscription()" class="auth-btn"
-                            style="margin: 0; padding: 0.5rem 1rem;" id="pay-btn">Pay Now</button>
-                    </div>
-                    <p id="topup-error" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.5rem; display: none;">
-                    </p>
-                </div>
-
-                <div class="worker-stats">
-                    <div>
-                        <h3 style="font-size: 1.1rem;">Security & Staff</h3>
-                        <p style="font-size: 0.8rem; color: var(--text-muted);">Manage your workers</p>
-                    </div>
-                    <div style="display: flex; gap: 1.5rem;">
-                        <div class="worker-stat-item">
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Total</p>
-                            <p class="worker-stat-value" id="total-workers-count">0</p>
-                        </div>
-                        <div class="worker-stat-item">
-                            <p style="font-size: 0.75rem; color: var(--text-muted);">Active</p>
-                            <p class="worker-stat-value" id="active-workers-count">0</p>
-                        </div>
-                    </div>
-                    <button class="add-worker-btn" onclick="openWorkerModal()">+ Add Worker</button>
+        
+        <!-- Top Navigation -->
+        <nav class="dashboard-nav glass">
+            <div class="nav-brand">
+                <h2 id="dashboard-title">Merchant Dashboard</h2>
+                <div class="connection-status">
+                    <span class="status-dot"></span>
+                    <span>Live Listener Active</span>
                 </div>
             </div>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </nav>
 
-            <div class="transactions-section">
-                <h3>Recent Transactions</h3>
-                <div class="table-container">
-                    <table id="transactions-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactions-body">
-                            <tr>
-                                <td colspan="3" style="text-align: center; color: var(--text-muted);">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+        <!-- Profile Details Banner -->
+        <div class="profile-banner glass">
+            <div class="profile-item">
+                <span class="profile-label">Welcome</span>
+                <span id="merchant-name" class="profile-value">MERCHANT</span>
+            </div>
+            <div class="profile-item" id="merchant-email-container">
+                <span class="profile-label" id="merchant-email-label">Email</span>
+                <span id="merchant-email-display" class="profile-value">--</span>
+            </div>
+            <div class="profile-item" id="merchant-bank-container" style="display: none;">
+                <span class="profile-label" id="merchant-bank-label">Bank</span>
+                <span id="display-bank" class="profile-value">--</span>
+            </div>
+            <div class="profile-item" id="merchant-account-container" style="display: none;">
+                <span class="profile-label" id="merchant-account-label">Account Number</span>
+                <span id="display-account" class="profile-value">--</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-label" id="merchant-id-label">Merchant ID</span>
+                <span class="profile-value">#<span id="merchant-id-display">--</span></span>
             </div>
         </div>
+
+        <!-- Dashboard Main Grid -->
+        <div class="dashboard-grid">
+            
+            <!-- Left Panel (Controls & Stats) -->
+            <div class="left-panel">
+                
+                <!-- Alerts Remaining Card -->
+                <div id="sensitive-merchant-data" style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%;">
+                    
+                    <div class="panel-card glass balance-section">
+                        <p>Alerts Remaining</p>
+                        <h1 id="credits" class="gradient-text">--</h1>
+                    </div>
+
+                    <!-- Top Up Card -->
+                    <div class="panel-card glass deposit-box">
+                        <h3>Top Up Alerts via Monnify</h3>
+                        <p class="instruction-subtitle">₦1,000 for 100 Alerts (10 NGN/Alert)</p>
+                        <div class="topup-input-wrapper">
+                            <input type="number" id="topup-amount" placeholder="Amount (min 1000)" min="1000" max="20000">
+                            <button onclick="initiateSubscription()" class="auth-btn" id="pay-btn">Pay Now</button>
+                        </div>
+                        <p id="topup-error" style="color: #f43f5e; font-size: 0.8rem; margin-top: 0.5rem; display: none;"></p>
+                    </div>
+
+                    <!-- Security & Workers Card -->
+                    <div class="panel-card glass worker-stats">
+                        <h3>Security & Staff</h3>
+                        <div class="worker-stat-row">
+                            <p>Total Workers Registered</p>
+                            <span class="worker-stat-value" id="total-workers-count">0</span>
+                        </div>
+                        <div class="worker-stat-row">
+                            <p>Active Workers (Last 24h)</p>
+                            <span class="worker-stat-value" id="active-workers-count" style="color: var(--success);">0</span>
+                        </div>
+                        <button class="add-worker-btn" onclick="openWorkerModal()">+ Add New Worker</button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Right Panel (Live Transactions) -->
+            <div class="right-panel">
+                <div class="panel-card glass transactions-section" style="flex: 1;">
+                    <div class="table-header-row">
+                        <h3>Live Transactions Feed</h3>
+                    </div>
+                    <div class="table-container">
+                        <table id="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Amount</th>
+                                    <th>Status / Verification Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-body">
+                                <tr>
+                                    <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading live feed...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
     </div>
 
     <!-- Add Worker Modal -->
@@ -460,11 +483,11 @@
                             const timeString = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             const amount = parseFloat(tx.amount).toLocaleString('en-US', { style: 'currency', currency: 'NGN' });
 
-                            let statusBadge = '<span class="badge" style="font-size: 0.6rem; padding: 2px 6px; background-color: var(--success); color: white;">Verified</span>';
-                            let amountColor = 'var(--success)';
+                            let statusBadge = '<span class="status-badge verified"><span class="badge-dot"></span>Verified</span>';
+                            let amountColor = '#34d399';
                             if (tx.is_suspicious) {
-                                statusBadge = `<span class="badge" style="font-size: 0.6rem; padding: 2px 6px; background-color: #ef4444; color: white;" title="${tx.suspicious_reason}">Fake Alert</span>`;
-                                amountColor = '#ef4444';
+                                statusBadge = `<span class="status-badge fake" title="${tx.suspicious_reason}"><span class="badge-dot"></span>Fake Alert</span>`;
+                                amountColor = '#fb7185';
                             }
 
                             tbody.innerHTML += `
