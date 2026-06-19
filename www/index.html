@@ -87,8 +87,18 @@
 
             <div class="user-info">
                 <h3>Welcome, <span id="merchant-name" class="highlight">MERCHANT</span></h3>
-                <p class="subtitle"><span id="merchant-id-label">Merchant ID: #</span><span
-                        id="merchant-id-display"></span></p>
+                <p class="subtitle" id="merchant-email-container">
+                    <span id="merchant-email-label">Email: </span><span id="merchant-email-display" class="highlight"></span>
+                </p>
+                <p class="subtitle" id="merchant-bank-container" style="display: none;">
+                    <span id="merchant-bank-label">Bank: </span><span id="display-bank" class="highlight">--</span>
+                </p>
+                <p class="subtitle" id="merchant-account-container" style="display: none;">
+                    <span id="merchant-account-label">Account: </span><span id="display-account" class="highlight">--</span>
+                </p>
+                <p class="subtitle">
+                    <span id="merchant-id-label">Merchant ID: #</span><span id="merchant-id-display"></span>
+                </p>
             </div>
 
             <div id="sensitive-merchant-data">
@@ -115,9 +125,15 @@
                         <h3 style="font-size: 1.1rem;">Security & Staff</h3>
                         <p style="font-size: 0.8rem; color: var(--text-muted);">Manage your workers</p>
                     </div>
-                    <div class="worker-stat-item">
-                        <p style="font-size: 0.75rem; color: var(--text-muted);">Active Workers</p>
-                        <p class="worker-stat-value" id="active-workers-count">0</p>
+                    <div style="display: flex; gap: 1.5rem;">
+                        <div class="worker-stat-item">
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Total</p>
+                            <p class="worker-stat-value" id="total-workers-count">0</p>
+                        </div>
+                        <div class="worker-stat-item">
+                            <p style="font-size: 0.75rem; color: var(--text-muted);">Active</p>
+                            <p class="worker-stat-value" id="active-workers-count">0</p>
+                        </div>
                     </div>
                     <button class="add-worker-btn" onclick="openWorkerModal()">+ Add Worker</button>
                 </div>
@@ -305,6 +321,10 @@
             const nameDisplay = localStorage.getItem("merchant_email");
             if (nameDisplay) {
                 document.getElementById("merchant-name").innerText = nameDisplay.split('@')[0].toUpperCase();
+                const emailDisplay = document.getElementById("merchant-email-display");
+                if (emailDisplay) {
+                    emailDisplay.innerText = nameDisplay;
+                }
             }
 
             if (role === 'worker') {
@@ -312,13 +332,32 @@
                 document.getElementById("merchant-id-label").innerText = "Working for Merchant ID: #";
                 document.getElementById("merchant-id-display").innerText = merchantId;
                 document.getElementById("sensitive-merchant-data").style.display = "none";
+                
+                const bankContainer = document.getElementById("merchant-bank-container");
+                const accContainer = document.getElementById("merchant-account-container");
+                if (bankContainer) bankContainer.style.display = "none";
+                if (accContainer) accContainer.style.display = "none";
+                
+                const emailLabel = document.getElementById("merchant-email-label");
+                if (emailLabel) emailLabel.innerText = "Username: ";
             } else {
                 document.getElementById("dashboard-title").innerText = "Merchant Dashboard";
                 document.getElementById("merchant-id-label").innerText = "Merchant ID: #";
                 document.getElementById("merchant-id-display").innerText = merchantId;
                 document.getElementById("sensitive-merchant-data").style.display = "block";
-                document.getElementById("display-bank").innerText = localStorage.getItem("merchant_bank") || "--";
-                document.getElementById("display-account").innerText = localStorage.getItem("merchant_acc") || "--";
+                
+                const bankContainer = document.getElementById("merchant-bank-container");
+                const accContainer = document.getElementById("merchant-account-container");
+                if (bankContainer) bankContainer.style.display = "block";
+                if (accContainer) accContainer.style.display = "block";
+                
+                const emailLabel = document.getElementById("merchant-email-label");
+                if (emailLabel) emailLabel.innerText = "Email: ";
+
+                const displayBank = document.getElementById("display-bank");
+                const displayAccount = document.getElementById("display-account");
+                if (displayBank) displayBank.innerText = localStorage.getItem("merchant_bank") || "--";
+                if (displayAccount) displayAccount.innerText = localStorage.getItem("merchant_acc") || "--";
             }
 
             updateDashboard();
@@ -396,8 +435,12 @@
                     // Fetch Worker Stats
                     const workerRes = await fetch(window.API_BASE_URL + "/merchant/workers/" + merchantId);
                     const workerData = await workerRes.json();
-                    if (workerData && workerData.active !== undefined) {
-                        document.getElementById('active-workers-count').innerText = workerData.active;
+                    if (workerData) {
+                        if (workerData.active !== undefined) document.getElementById('active-workers-count').innerText = workerData.active;
+                        if (workerData.total !== undefined) {
+                            const totalEl = document.getElementById('total-workers-count');
+                            if (totalEl) totalEl.innerText = workerData.total;
+                        }
                     }
                 }
 
