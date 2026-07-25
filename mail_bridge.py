@@ -24,7 +24,7 @@ def extract_text_from_html(html_content):
 
 EMAIL_USER = "bankmirror8@gmail.com"
 EMAIL_PASS = "vtdyfbzpkrtfrryc" # No spaces here!
-BACKEND_URL = "https://bank-mirror-backend.onrender.com/notifications"
+BACKEND_URL = "https://bank-mirror-backend-1.onrender.com/notifications"
 MERCHANT_ID = "B1D71377"
 
 def verify_email_authenticity(msg):
