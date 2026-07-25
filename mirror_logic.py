@@ -46,47 +46,24 @@ def save_transaction(raw, amt, m_id):
     # 1. Check if the merchant has alerts remaining
     cursor.execute("SELECT merchant_credits FROM merchants WHERE merchant_id = ?", (m_id,))
     result = cursor.fetchone()
-    
-    if result and result[0] > 0:
-        # 2. Deduct 1 credit for the mirror service
-        new_balance = result[0] - 1
-        cursor.execute("UPDATE merchants SET merchant_credits = ? WHERE merchant_id = ?", (new_balance, m_id))
-        
-            # 3. Save the alert to the log
-    cursor.execute("INSERT INTO transactions (raw_text, amount, merchant_id) VALUES (?, ?, ?)", (raw, amt, m_id))
-            
-            # --- NEW: TRIGGER REAL-TIME PING HERE ---
-            # This sends the instant notification to the merchant's phone
-    send_realtime_ping(m_id, amt) 
-    # Connect to database and fetch credits
-    conn = sqlite3.connect('bank_mirror.db')
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT merchant_credits FROM merchants WHERE merchant_id = ?", (m_id,))
-    result = cursor.fetchone()
-    merchant_credits = result[0] if result else 0        
-
-    conn.close()            
-
-def save_transaction(raw, amt, m_id):
-    # ADD THESE TWO LINES TO CLEAR THE YELLOW LINES
-    conn = sqlite3.connect('bank_mirror.db')
-    cursor = conn.cursor()
-
-    # 1. Fetch current credits first
-    cursor.execute("SELECT merchant_credits FROM merchants WHERE merchant_id = ?", (m_id,))
-    result = cursor.fetchone()
     merchant_credits = result[0] if result else 0
-
-    # 2. Now check the condition
+    
     if merchant_credits > 0:
-        # Subtract one credit
+        # 2. Deduct 1 credit for the mirror service
         new_balance = merchant_credits - 1
         cursor.execute("UPDATE merchants SET merchant_credits = ? WHERE merchant_id = ?", (new_balance, m_id))
         
-        # Log the transaction
+        # 3. Save the alert to the log
         cursor.execute("INSERT INTO transactions (raw_text, amount, merchant_id) VALUES (?, ?, ?)", (raw, amt, m_id))
         conn.commit()
+        
+        # 4. Trigger real-time notification
+        send_realtime_ping(m_id, amt)
+        conn.close()
+        return "Success: Alert logged and credit deducted."
+    else:
+        conn.close()
+        return "Error: Insufficient credits."
 def display_dashboard(total_revenue, alert_count, last_amount):
     table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
     table.add_column("Metric", style="dim", width=20)
@@ -212,43 +189,17 @@ def calculate_merchant_settlement(m_id: str):
     cursor = conn.cursor()
     
     # Sum only the amounts for today for this specific merchant
+    # Note: 'timestamp' column is used instead of non-existent 'created_at'
     query = """
     SELECT SUM(amount) FROM transactions 
     WHERE merchant_id = ? 
-    AND date(created_at) = date('now')
+    AND date(timestamp) = date('now')
     """
     cursor.execute(query, (m_id,))
     total_inflow = cursor.fetchone()[0] or 0.0
     
     # Business Rules
     fee_percentage = 0.01  # 1% Zaria Hub Fee
-    hub_revenue = total_inflow * fee_percentage
-    merchant_net = total_inflow - hub_revenue
-    
-    conn.close()
-    
-    return {
-        "gross_volume": total_inflow,
-        "hub_fee": round(hub_revenue, 2),
-        "net_payout": round(merchant_net, 2)
-    }
-import sqlite3
-
-def calculate_merchant_settlement(m_id: str):
-    conn = sqlite3.connect("bank_mirror.db")
-    cursor = conn.cursor()
-    
-    # Calculate today's total for this specific merchant
-    query = """
-    SELECT SUM(amount) FROM transactions 
-    WHERE merchant_id = ? 
-    AND date(created_at) = date('now')
-    """
-    cursor.execute(query, (m_id,))
-    total_inflow = cursor.fetchone()[0] or 0.0
-    
-    # Zaria Hub Business Logic: 1% Fee
-    fee_percentage = 0.01 
     hub_revenue = total_inflow * fee_percentage
     merchant_net = total_inflow - hub_revenue
     

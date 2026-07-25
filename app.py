@@ -29,9 +29,9 @@ MONNIFY_BASE_URL = os.getenv("MONNIFY_BASE_URL", "https://sandbox.monnify.com")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await start_telegram_bot()
+    # await start_telegram_bot()
     yield
-    await stop_telegram_bot()
+    # await stop_telegram_bot()
 
 def trigger_desktop_notification(title, message):
     try:
