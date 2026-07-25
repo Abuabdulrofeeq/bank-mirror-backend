@@ -16,7 +16,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <meta name="google-site-verification" content="2GZ1g37cQ-zHIhlPi-VwrxfqYhiTeDn7D9DZ_bywd_c" />
 </head>
 
@@ -119,17 +119,23 @@
             <!-- Left Panel (Controls & Stats) -->
             <div class="left-panel">
                 
-                <!-- Alerts Remaining Card -->
-                <div id="sensitive-merchant-data" style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%;">
+                <div id="sensitive-merchant-data" class="merchant-grid-wrapper">
                     
+                    <!-- Alerts Remaining Card -->
                     <div class="panel-card glass balance-section">
-                        <p>Alerts Remaining</p>
+                        <div class="card-icon-header">
+                            <span class="glow-icon">💳</span>
+                        </div>
+                        <p class="card-subtitle">Alerts Remaining</p>
                         <h1 id="credits" class="gradient-text">--</h1>
                     </div>
 
                     <!-- Top Up Card -->
                     <div class="panel-card glass deposit-box">
-                        <h3>Top Up Alerts via Monnify</h3>
+                        <div class="card-title-row">
+                            <span class="card-icon">⚡</span>
+                            <h3>Top Up Alerts via Monnify</h3>
+                        </div>
                         <p class="instruction-subtitle">₦1,000 for 100 Alerts (10 NGN/Alert)</p>
                         <div class="topup-input-wrapper">
                             <input type="number" id="topup-amount" placeholder="Amount (min 1000)" min="1000" max="20000">
@@ -140,14 +146,17 @@
 
                     <!-- Security & Workers Card -->
                     <div class="panel-card glass worker-stats">
-                        <h3>Security & Staff</h3>
+                        <div class="card-title-row">
+                            <span class="card-icon">👥</span>
+                            <h3>Security & Staff</h3>
+                        </div>
                         <div class="worker-stat-row">
                             <p>Total Workers Registered</p>
                             <span class="worker-stat-value" id="total-workers-count">0</span>
                         </div>
                         <div class="worker-stat-row">
                             <p>Active Workers (Last 24h)</p>
-                            <span class="worker-stat-value" id="active-workers-count" style="color: var(--success);">0</span>
+                            <span class="worker-stat-value" id="active-workers-count">0</span>
                         </div>
                         <button class="add-worker-btn" onclick="openWorkerModal()">+ Add New Worker</button>
                     </div>
@@ -157,9 +166,12 @@
 
             <!-- Right Panel (Live Transactions) -->
             <div class="right-panel">
-                <div class="panel-card glass transactions-section" style="flex: 1;">
+                <div class="panel-card glass transactions-section">
                     <div class="table-header-row">
-                        <h3>Live Transactions Feed</h3>
+                        <div class="feed-title-wrapper">
+                            <span class="live-pulse"></span>
+                            <h3>Live Transactions Feed</h3>
+                        </div>
                     </div>
                     <div class="table-container">
                         <table id="transactions-table">

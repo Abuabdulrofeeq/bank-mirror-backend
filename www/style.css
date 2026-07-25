@@ -405,51 +405,93 @@ body {
 
 /* Cards Design */
 .panel-card {
-    padding: 1.75rem;
+    padding: 2rem;
+    border-radius: 20px;
+    border: 1px solid var(--card-border);
+    transition: var(--transition-smooth);
+    background: var(--card-bg);
 }
 
-.panel-card h3 {
+.panel-card:hover {
+    border-color: var(--card-border-glow);
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.05);
+}
+
+/* Header inside Cards */
+.card-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
+.card-title-row h3 {
     font-family: 'Outfit', sans-serif;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 600;
-    margin-bottom: 1.2rem;
     letter-spacing: -0.2px;
-    border-bottom: 1px solid var(--card-border);
-    padding-bottom: 0.75rem;
+    margin: 0;
+    color: var(--text-main);
+}
+
+.card-icon {
+    font-size: 1.3rem;
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.35));
+}
+
+/* Left panel grid wrapper */
+.merchant-grid-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
 }
 
 /* Alerts remaining widget */
 .balance-section {
     text-align: center;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08));
-    border-radius: 16px;
-    padding: 2rem 1.5rem;
-    border: 1px solid var(--card-border-glow);
+    background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 70%), 
+                radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.1), transparent 70%),
+                rgba(13, 17, 28, 0.45);
+    border: 1px solid rgba(99, 102, 241, 0.25) !important;
     position: relative;
     overflow: hidden;
+    padding: 2.2rem 1.5rem;
 }
 
-.balance-section::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+.card-icon-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 54px;
+    height: 54px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 14px;
+    margin: 0 auto 1rem auto;
+    font-size: 1.6rem;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
 }
 
-.balance-section p {
-    font-size: 0.75rem;
+.card-subtitle {
+    font-family: 'Outfit', sans-serif;
     font-weight: 700;
-    color: var(--text-muted);
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
     margin-bottom: 0.5rem;
 }
 
 .balance-section h1 {
     font-family: 'Outfit', sans-serif;
-    font-size: 4.5rem;
+    font-size: 5rem;
     font-weight: 800;
     line-height: 1;
+    text-shadow: 0 0 35px rgba(99, 102, 241, 0.35);
 }
 
 .gradient-text {
@@ -466,91 +508,103 @@ body {
     gap: 0.75rem;
 }
 
-.deposit-box .instruction-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-main);
-}
-
 .deposit-box .instruction-subtitle {
     font-size: 0.8rem;
     color: var(--text-muted);
+    margin-bottom: 0.25rem;
 }
 
 .topup-input-wrapper {
     display: flex;
     gap: 0.5rem;
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
 }
 
 .topup-input-wrapper input {
     flex: 1;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--card-border);
-    padding: 0.7rem 0.9rem;
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
     color: var(--text-main);
     font-family: 'Inter', sans-serif;
     outline: none;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     transition: var(--transition-smooth);
 }
 
 .topup-input-wrapper input:focus {
     border-color: var(--accent-1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    background: rgba(0, 0, 0, 0.45);
 }
 
 .topup-input-wrapper button {
     margin: 0;
-    padding: 0 1.25rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    padding: 0 1.5rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
 }
 
 /* Security & staff widget */
 .worker-stats {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.2rem;
 }
 
 .worker-stat-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(0, 0, 0, 0.2);
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.02);
+    background: rgba(0, 0, 0, 0.25);
+    padding: 0.9rem 1.2rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: var(--transition-smooth);
+}
+
+.worker-stat-row:hover {
+    background: rgba(255, 255, 255, 0.015);
+    border-color: rgba(255, 255, 255, 0.06);
 }
 
 .worker-stat-row p {
     font-size: 0.85rem;
     color: var(--text-muted);
+    font-weight: 500;
 }
 
 .worker-stat-value {
-    font-size: 1.25rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.4rem;
     font-weight: 700;
     color: var(--accent-1);
 }
 
+.worker-stat-row:last-of-type .worker-stat-value {
+    color: var(--success);
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
 .add-worker-btn {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--card-border);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--text-main);
-    padding: 0.7rem;
-    border-radius: 8px;
+    padding: 0.85rem;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 600;
     transition: var(--transition-smooth);
     width: 100%;
+    margin-top: 0.25rem;
 }
 
 .add-worker-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--text-muted);
+    background: rgba(99, 102, 241, 0.1);
+    border-color: var(--accent-1);
+    color: var(--text-main);
 }
 
 /* Transactions Table */
@@ -564,50 +618,69 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.2rem;
-    border-bottom: 1px solid var(--card-border);
-    padding-bottom: 0.75rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 0.85rem;
 }
 
-.table-header-row h3 {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
+.feed-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.feed-title-wrapper h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    margin: 0;
+}
+
+.live-pulse {
+    width: 8px;
+    height: 8px;
+    background-color: var(--success);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--success);
+    animation: statusPulse 1.6s infinite;
 }
 
 .table-container {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.02);
+    background: rgba(10, 15, 30, 0.25);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
     overflow: hidden;
 }
 
 #transactions-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
 }
 
 #transactions-table th {
     text-align: left;
-    padding: 1rem 1.2rem;
+    padding: 1.1rem 1.4rem;
     color: var(--text-muted);
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--card-border);
-    background: rgba(0, 0, 0, 0.1);
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 #transactions-table td {
-    padding: 1rem 1.2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     vertical-align: middle;
+    font-size: 0.9rem;
+    color: var(--text-main);
 }
 
 #transactions-table tr:hover td {
-    background: rgba(255, 255, 255, 0.015);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 #transactions-table tr:last-child td {
@@ -618,29 +691,31 @@ body {
 .status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 4px 10px;
+    gap: 0.45rem;
+    padding: 5px 12px;
     border-radius: 50px;
     font-size: 0.75rem;
     font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    border: 1px solid transparent;
 }
 
 .status-badge.verified {
-    background-color: rgba(16, 185, 129, 0.12);
+    background-color: rgba(16, 185, 129, 0.1);
     color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.2);
 }
 
 .status-badge.fake {
-    background-color: rgba(244, 63, 94, 0.12);
+    background-color: rgba(244, 63, 94, 0.1);
     color: #fb7185;
-    border: 1px solid rgba(244, 63, 94, 0.2);
+    border-color: rgba(244, 63, 94, 0.2);
     cursor: help;
 }
 
 .badge-dot {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
 }
 
@@ -654,8 +729,8 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(3, 4, 8, 0.8);
-    backdrop-filter: blur(8px);
+    background: rgba(3, 4, 8, 0.85);
+    backdrop-filter: blur(10px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -666,24 +741,25 @@ body {
     background: #0d111c;
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 2.2rem;
-    border-radius: 20px;
+    border-radius: 24px;
     width: 90%;
-    max-width: 400px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    animation: modalEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 420px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    animation: modalEnter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes modalEnter {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from { transform: scale(0.9) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .modal-content h3 {
     font-family: 'Outfit', sans-serif;
-    font-size: 1.3rem;
+    font-size: 1.35rem;
     font-weight: 700;
     margin-bottom: 1.5rem;
     letter-spacing: -0.5px;
+    color: var(--text-main);
 }
 
 .modal-actions {
@@ -698,9 +774,9 @@ body {
     color: var(--text-muted);
     border: none;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.2rem;
     transition: var(--transition-smooth);
 }
 
