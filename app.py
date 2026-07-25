@@ -6,6 +6,7 @@ import time
 import hashlib
 import hmac
 import json
+import re
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -374,6 +375,121 @@ async def trigger_transaction_alert(background_tasks: BackgroundTasks):
         "A new transaction has been detected on your monitored account."
     )
     return {"status": "Success", "message": "Alert processing in background"}
+
+@app.post("/api/webhook/email")
+async def email_webhook(request: Request, background_tasks: BackgroundTasks):
+    # Extract fields from the request
+    # Webhook parsers can send as JSON or Form parameters
+    form_data = await request.form()
+    
+    to_field = form_data.get("to", "") or form_data.get("recipient", "")
+    text_body = form_data.get("text", "") or form_data.get("body-plain", "")
+    from_field = form_data.get("from", "") or form_data.get("sender", "")
+    subject = form_data.get("subject", "")
+    
+    # Fallback to JSON if it's not a multipart form
+    if not to_field and not text_body:
+        try:
+            json_data = await request.json()
+            to_field = json_data.get("to", "") or json_data.get("recipient", "")
+            text_body = json_data.get("text", "") or json_data.get("body", "")
+            from_field = json_data.get("from", "") or json_data.get("sender", "")
+            subject = json_data.get("subject", "")
+        except:
+            pass
+            
+    if not to_field or not text_body:
+        raise HTTPException(status_code=400, detail="Missing required email fields: 'to' or 'text'")
+        
+    # Find merchant_id from the 'to' address (e.g. inflow-B1D71377@bankmirror.com.ng)
+    match = re.search(r'inflow-([A-Z0-9]{8})@', to_field, re.IGNORECASE)
+    if not match:
+        return {"status": "Ignored", "reason": "No merchant ID in recipient address"}
+        
+    merchant_id = match.group(1).upper()
+    
+    # Verify merchant exists in database
+    conn = sqlite3.connect('bank_mirror.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM merchants WHERE merchant_id = ?", (merchant_id,))
+    merchant_row = cursor.fetchone()
+    if not merchant_row:
+        conn.close()
+        return {"status": "Failed", "reason": f"Merchant ID {merchant_id} not found in database"}
+        
+    # Extract Amount (NGN / ₦ / N / Naira followed by digits)
+    amount_match = re.search(r"(?:NGN|₦|N|NG|Naira)\s?([\d,]+(?:\.\d+)?)", text_body, re.IGNORECASE)
+    if not amount_match:
+        conn.close()
+        return {"status": "Ignored", "reason": "No transaction amount found in email body"}
+        
+    amount_str = amount_match.group(1).replace(',', '')
+    try:
+        amount = float(amount_str)
+    except:
+        conn.close()
+        return {"status": "Failed", "reason": "Failed to parse amount as float"}
+        
+    # Extract Reference Number
+    ref_match = re.search(r'(?i)\b(?:ref|reference|txn id|trx|transaction|session id|receipt no|order no)\b[\s\:\-]*([A-Za-z0-9]{6,25})', text_body)
+    reference_number = ref_match.group(1) if ref_match else None
+    
+    # Run validation checks (heuristics & duplicates)
+    is_suspicious = False
+    suspicious_reason = ""
+    
+    # 1. Zero instead of O in bank names check
+    if re.search(r'(?i)(gtb|zenith|uba|firstbank|access|polaris|fcmb|stanbic)[^a-z\s]*0', text_body) or re.search(r'[a-zA-Z]0[a-zA-Z]', text_body):
+        is_suspicious = True
+        suspicious_reason += "[Heuristic] Suspicious characters (0 instead of O) detected. "
+        
+    # 2. Urgency key terms check
+    urgency_keywords = [r'urgent', r'final warning', r'call this number', r'immediate action']
+    for keyword in urgency_keywords:
+        if re.search(keyword, text_body, re.IGNORECASE):
+            is_suspicious = True
+            suspicious_reason += f"[Heuristic] Urgency keyword detected: {keyword}. "
+            
+    # 3. Missing reference number
+    if not reference_number:
+        is_suspicious = True
+        suspicious_reason += "[Reference] Missing reference number. "
+        
+    # 4. Duplicate Reference Number check
+    if reference_number:
+        cursor.execute("SELECT id FROM transactions WHERE reference_number = ?", (reference_number,))
+        if cursor.fetchone():
+            is_suspicious = True
+            suspicious_reason += "[Backend] Duplicate reference number. "
+            
+    # Save the transaction log
+    cursor.execute("""
+        INSERT INTO transactions (raw_text, amount, merchant_id, reference_number, is_suspicious, suspicious_reason)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (text_body, amount, merchant_id, reference_number, is_suspicious, suspicious_reason))
+    
+    # Deduct credit if alert is valid (not suspicious)
+    if not is_suspicious:
+        cursor.execute("SELECT merchant_credits FROM merchants WHERE merchant_id = ?", (merchant_id,))
+        result = cursor.fetchone()
+        if result and result[0] > 0:
+            cursor.execute("UPDATE merchants SET merchant_credits = merchant_credits - 1 WHERE merchant_id = ?", (merchant_id,))
+            
+            # Send real-time notification
+            await notify_channel(f"💰 [BANK MIRROR] New Alert via Webhook!\n\nAmount: ₦{amount:,.2f}\nMerchant: {merchant_id}\nRef: {reference_number}")
+            background_tasks.add_task(trigger_desktop_notification, "Bank Mirror Alert", f"New Alert: ₦{amount:,.2f} received!")
+            
+    conn.commit()
+    conn.close()
+    
+    return {
+        "status": "Success",
+        "message": "Notification parsed",
+        "merchant_id": merchant_id,
+        "amount": amount,
+        "is_suspicious": is_suspicious,
+        "suspicious_reason": suspicious_reason
+    }
 
 @app.post("/notifications")
 async def receive_notification(payload: NotificationPayload, background_tasks: BackgroundTasks):

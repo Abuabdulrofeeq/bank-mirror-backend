@@ -107,6 +107,10 @@
                 <span class="profile-label" id="merchant-account-label">Account Number</span>
                 <span id="display-account" class="profile-value">--</span>
             </div>
+            <div class="profile-item" id="merchant-inflow-email-container" style="display: none;">
+                <span class="profile-label">Dedicated Forwarding Email</span>
+                <span class="profile-value" style="color: var(--accent-1); font-weight: 700;"><span id="merchant-inflow-email-display">--</span></span>
+            </div>
             <div class="profile-item">
                 <span class="profile-label" id="merchant-id-label">Merchant ID</span>
                 <span class="profile-value">#<span id="merchant-id-display">--</span></span>
@@ -370,8 +374,10 @@
                 
                 const bankContainer = document.getElementById("merchant-bank-container");
                 const accContainer = document.getElementById("merchant-account-container");
+                const inflowContainer = document.getElementById("merchant-inflow-email-container");
                 if (bankContainer) bankContainer.style.display = "none";
                 if (accContainer) accContainer.style.display = "none";
+                if (inflowContainer) inflowContainer.style.display = "none";
                 
                 const emailLabel = document.getElementById("merchant-email-label");
                 if (emailLabel) emailLabel.innerText = "Username: ";
@@ -383,12 +389,16 @@
                 
                 const bankContainer = document.getElementById("merchant-bank-container");
                 const accContainer = document.getElementById("merchant-account-container");
+                const inflowContainer = document.getElementById("merchant-inflow-email-container");
+                const inflowDisplay = document.getElementById("merchant-inflow-email-display");
                 if (bankContainer) bankContainer.style.display = "block";
                 if (accContainer) accContainer.style.display = "block";
+                if (inflowContainer) inflowContainer.style.display = "block";
+                if (inflowDisplay) inflowDisplay.innerText = `inflow-${merchantId.toLowerCase()}@bankmirror.com.ng`;
                 
                 const emailLabel = document.getElementById("merchant-email-label");
                 if (emailLabel) emailLabel.innerText = "Email: ";
-
+ 
                 const displayBank = document.getElementById("display-bank");
                 const displayAccount = document.getElementById("display-account");
                 if (displayBank) displayBank.innerText = localStorage.getItem("merchant_bank") || "--";

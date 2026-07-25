@@ -9,3 +9,5 @@ pydantic
 rich
 httpx
 aiofiles
+python-multipart
+
