@@ -22,3 +22,8 @@ node_modules/
 package-lock.json
 package.json
 capacitor.config.json
+
+# Local IDE, Binaries, and Logs
+.idea/
+jdk21/
+*.log

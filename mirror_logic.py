@@ -49,12 +49,27 @@ def save_transaction(raw, amt, m_id):
     merchant_credits = result[0] if result else 0
     
     if merchant_credits > 0:
-        # 2. Deduct 1 credit for the mirror service
+        # 2. Deduct 1 credit for the mirror service and add loyalty points
         new_balance = merchant_credits - 1
-        cursor.execute("UPDATE merchants SET merchant_credits = ? WHERE merchant_id = ?", (new_balance, m_id))
+        cursor.execute("""
+            UPDATE merchants 
+            SET merchant_credits = ?, 
+                alerts_remaining = MAX(0, COALESCE(alerts_remaining, ?) - 1),
+                loyalty_points = COALESCE(loyalty_points, 0) + 10
+            WHERE merchant_id = ?
+        """, (new_balance, merchant_credits, m_id))
         
         # 3. Save the alert to the log
         cursor.execute("INSERT INTO transactions (raw_text, amount, merchant_id) VALUES (?, ?, ?)", (raw, amt, m_id))
+        
+        try:
+            cursor.execute("""
+                INSERT INTO coin_transactions (merchant_id, type, points_change, status, details)
+                VALUES (?, 'POINTS_EARNED', 10, 'COMPLETED', 'Verified manual entry alert')
+            """, (m_id,))
+        except Exception:
+            pass
+
         conn.commit()
         
         # 4. Trigger real-time notification

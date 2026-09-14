@@ -148,6 +148,71 @@
                         <p id="topup-error" style="color: #f43f5e; font-size: 0.8rem; margin-top: 0.5rem; display: none;"></p>
                     </div>
 
+                    <!-- Redeem Alerts with $BMIRROR Coins (Web3 Engine) -->
+                    <div class="panel-card glass web3-coin-box">
+                        <div class="card-title-row">
+                            <span class="card-icon crypto-glow">🪙</span>
+                            <div class="title-with-badge">
+                                <h3>Redeem Alerts with $BMIRROR Coins</h3>
+                                <span class="crypto-chip">Web3 Engine</span>
+                            </div>
+                        </div>
+
+                        <!-- Live Stats -->
+                        <div class="coin-stats-grid">
+                            <div class="coin-stat-tile">
+                                <span class="coin-stat-label">Available Coins</span>
+                                <div class="coin-stat-value-row">
+                                    <span id="coin-balance" class="coin-stat-num gold-text">0.00</span>
+                                    <span class="token-symbol">$BMIRROR</span>
+                                </div>
+                            </div>
+                            <div class="coin-stat-tile">
+                                <span class="coin-stat-label">Current Points</span>
+                                <div class="coin-stat-value-row">
+                                    <span id="loyalty-points" class="coin-stat-num cyan-text">0</span>
+                                    <span class="token-symbol">PTS</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Info Pill -->
+                        <p class="crypto-hint">
+                            <span class="pulse-dot"></span> Earn <strong>+10 PTS</strong> per verified alert. <strong>1,000 PTS = 10 $BMIRROR</strong>.
+                        </p>
+
+                        <!-- Action Buttons -->
+                        <div class="coin-actions-wrapper">
+                            <button id="buyWithCoinBtn" class="auth-btn coin-primary-btn" onclick="buyAlertsWithCoin()">
+                                <span>⚡ Buy 100 Alerts (10 Coins)</span>
+                            </button>
+                            <button id="convertPointsBtn" class="coin-secondary-btn" onclick="convertPointsToCoins()">
+                                <span>🔄 Convert 1,000 Points → 10 Coins</span>
+                            </button>
+                        </div>
+
+                        <!-- Web3 Wallet Dropdown / Section -->
+                        <div class="web3-wallet-accordion">
+                            <div class="wallet-accordion-header" onclick="toggleWalletSection()">
+                                <span>🔗 Web3 Wallet & On-Chain Tools</span>
+                                <span id="wallet-accordion-arrow">▼</span>
+                            </div>
+                            <div id="wallet-accordion-body" class="wallet-accordion-content hidden">
+                                <div class="wallet-input-group">
+                                    <label for="web3-wallet-input">Polygon EVM Wallet (0x...)</label>
+                                    <input type="text" id="web3-wallet-input" placeholder="0x71C...B29">
+                                    <div class="wallet-btns-row">
+                                        <button class="wallet-sub-btn" onclick="saveWeb3Wallet()">Save Wallet</button>
+                                        <button class="wallet-sub-btn withdraw-btn" onclick="withdrawCoinsPrompt()">Withdraw to Wallet</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Toast Message -->
+                        <div id="coin-action-toast" class="coin-toast hidden"></div>
+                    </div>
+
                     <!-- Security & Workers Card -->
                     <div class="panel-card glass worker-stats">
                         <div class="card-title-row">
@@ -460,14 +525,55 @@
 
             try {
                 if (role !== 'worker') {
-                    // Fetch Credits
+                    // Fetch Credits & Web3 Balances
                     const creditResponse = await fetch(window.API_BASE_URL + "/api/merchant/" + merchantId);
                     const creditData = await creditResponse.json();
 
                     if (creditData && creditData.credits !== undefined) {
-                        const currentCredits = creditData.credits;
+                        const currentCredits = creditData.alerts_remaining !== undefined ? creditData.alerts_remaining : creditData.credits;
                         const creditsElement = document.getElementById('credits');
                         if (creditsElement) creditsElement.innerText = currentCredits;
+
+                        // Update Web3 Coin & Points metrics
+                        const coinBalanceEl = document.getElementById('coin-balance');
+                        if (coinBalanceEl && creditData.coin_balance !== undefined) {
+                            coinBalanceEl.innerText = parseFloat(creditData.coin_balance).toFixed(2);
+                        }
+
+                        const loyaltyPointsEl = document.getElementById('loyalty-points');
+                        if (loyaltyPointsEl && creditData.loyalty_points !== undefined) {
+                            loyaltyPointsEl.innerText = parseInt(creditData.loyalty_points).toLocaleString();
+                        }
+
+                        // Prefill saved Web3 wallet address if input is empty
+                        const walletInput = document.getElementById('web3-wallet-input');
+                        if (walletInput && !walletInput.value && creditData.web3_wallet_address) {
+                            walletInput.value = creditData.web3_wallet_address;
+                        }
+
+                        // Toggle Convert Points Button state
+                        const convertBtn = document.getElementById('convertPointsBtn');
+                        if (convertBtn) {
+                            const pts = parseInt(creditData.loyalty_points || 0);
+                            if (pts < 1000) {
+                                convertBtn.disabled = true;
+                                convertBtn.title = "Requires at least 1,000 points to swap for 10 coins";
+                            } else {
+                                convertBtn.disabled = false;
+                                convertBtn.title = "Swap 1,000 points for 10 $BMIRROR coins";
+                            }
+                        }
+
+                        // Toggle Buy with Coin Button hint/state
+                        const buyBtn = document.getElementById('buyWithCoinBtn');
+                        if (buyBtn) {
+                            const coins = parseFloat(creditData.coin_balance || 0);
+                            if (coins < 10) {
+                                buyBtn.title = "Requires at least 10 $BMIRROR coins (Current: " + coins.toFixed(2) + ")";
+                            } else {
+                                buyBtn.title = "Redeem 10 coins for 100 alerts";
+                            }
+                        }
 
                         if (lastCreditCount !== null && currentCredits < lastCreditCount) {
                             if (typeof Notification !== "undefined" && Notification.permission === "granted") {
@@ -569,6 +675,169 @@
                 btn.innerText = "Pay Now";
                 btn.disabled = false;
             }
+        }
+
+        // ==========================================
+        // WEB3 & $BMIRROR COIN EVENT LISTENERS
+        // ==========================================
+
+        async function buyAlertsWithCoin() {
+            const merchantId = localStorage.getItem("merchant_id");
+            if (!merchantId) return;
+
+            const btn = document.getElementById("buyWithCoinBtn");
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner"></span> Processing...`;
+            showCoinToast("Purchasing 100 alerts with 10 $BMIRROR coins...", "info");
+
+            try {
+                const res = await fetch(window.API_BASE_URL + "/api/buy-alerts-with-coin", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        merchant_id: merchantId,
+                        package_id: "tier_100",
+                        alerts_count: 100,
+                        coin_cost: 10.0
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || data.error || "Purchase failed.");
+                }
+
+                showCoinToast(`✅ ${data.message || "Successfully purchased 100 alerts!"}`, "success");
+                updateDashboard();
+            } catch (err) {
+                showCoinToast(`❌ ${err.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function convertPointsToCoins() {
+            const merchantId = localStorage.getItem("merchant_id");
+            if (!merchantId) return;
+
+            const btn = document.getElementById("convertPointsBtn");
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner"></span> Converting...`;
+
+            try {
+                const res = await fetch(window.API_BASE_URL + "/api/convert-points", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        merchant_id: merchantId,
+                        points: 1000
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || data.error || "Conversion failed.");
+                }
+
+                showCoinToast(`🎉 ${data.message || "Converted 1,000 points into +10 $BMIRROR!"}`, "success");
+                updateDashboard();
+            } catch (err) {
+                showCoinToast(`❌ ${err.message}`, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        function toggleWalletSection() {
+            const body = document.getElementById("wallet-accordion-body");
+            const arrow = document.getElementById("wallet-accordion-arrow");
+            const isHidden = body.classList.contains("hidden");
+            if (isHidden) {
+                body.classList.remove("hidden");
+                arrow.innerText = "▲";
+            } else {
+                body.classList.add("hidden");
+                arrow.innerText = "▼";
+            }
+        }
+
+        async function saveWeb3Wallet() {
+            const merchantId = localStorage.getItem("merchant_id");
+            const walletAddress = document.getElementById("web3-wallet-input").value.trim();
+            if (!walletAddress) {
+                showCoinToast("Please enter a valid Polygon/EVM wallet address (0x...)", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch(window.API_BASE_URL + "/api/link-wallet", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        merchant_id: merchantId,
+                        wallet_address: walletAddress
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Failed to link wallet");
+                showCoinToast("✅ Web3 wallet address linked successfully!", "success");
+                updateDashboard();
+            } catch (err) {
+                showCoinToast(`❌ ${err.message}`, "error");
+            }
+        }
+
+        async function withdrawCoinsPrompt() {
+            const merchantId = localStorage.getItem("merchant_id");
+            const walletAddress = document.getElementById("web3-wallet-input").value.trim();
+            if (!walletAddress) {
+                showCoinToast("Please enter or save your external Polygon wallet address first.", "error");
+                return;
+            }
+
+            const amountStr = prompt("Enter amount of $BMIRROR coins to withdraw to on-chain wallet:", "10");
+            if (!amountStr) return;
+            const amount = parseFloat(amountStr);
+            if (isNaN(amount) || amount <= 0) {
+                showCoinToast("Invalid withdrawal amount.", "error");
+                return;
+            }
+
+            showCoinToast("Initiating Web3 on-chain withdrawal...", "info");
+            try {
+                const res = await fetch(window.API_BASE_URL + "/api/withdraw-coins-to-wallet", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        merchant_id: merchantId,
+                        wallet_address: walletAddress,
+                        amount: amount
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Withdrawal failed");
+                const shortHash = data.tx_details && data.tx_details.tx_hash ? data.tx_details.tx_hash.substring(0, 12) + "..." : "";
+                showCoinToast(`🚀 ${data.message} ${shortHash ? "Tx: " + shortHash : ""}`, "success");
+                updateDashboard();
+            } catch (err) {
+                showCoinToast(`❌ ${err.message}`, "error");
+            }
+        }
+
+        function showCoinToast(msg, type = "info") {
+            const toast = document.getElementById("coin-action-toast");
+            if (!toast) return;
+            toast.innerText = msg;
+            toast.className = `coin-toast ${type}`;
+            toast.classList.remove("hidden");
+            clearTimeout(window.coinToastTimeout);
+            window.coinToastTimeout = setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 6000);
         }
     </script>
 </body>
