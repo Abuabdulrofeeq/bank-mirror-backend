@@ -288,8 +288,11 @@
     </div>
 
     <script>
-        // Use relative path for production so it works automatically on Render
-        window.API_BASE_URL = "";
+        // Use relative path on web/Render; fallback to live Render backend if running inside native mobile app (Capacitor/Cordova)
+        const isNativeMobile = window.location.protocol === 'capacitor:' || 
+                               window.location.protocol === 'file:' || 
+                               (window.location.hostname === 'localhost' && window.location.port === "");
+        window.API_BASE_URL = isNativeMobile ? "https://bank-mirror-backend-1.onrender.com" : "";
 
         let isRegisterMode = false;
         let selectedRole = 'merchant';
