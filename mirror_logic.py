@@ -175,7 +175,15 @@ def get_merchant_transactions(m_id: str):
     conn = sqlite3.connect("bank_mirror.db")
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    query = "SELECT * FROM transactions WHERE merchant_id = ? ORDER BY timestamp DESC"
+    query = """
+        SELECT * FROM transactions 
+        WHERE merchant_id = ? 
+          AND raw_text NOT LIKE '%Your transfer of%'
+          AND raw_text NOT LIKE '%Forex Fast%'
+          AND raw_text NOT LIKE '%[DEBIT%'
+          AND raw_text NOT LIKE '%Transaction Type DEBIT%'
+        ORDER BY timestamp DESC
+    """
     cursor.execute(query, (m_id,))
     rows = [dict(row) for row in cursor.fetchall()]
     conn.close()

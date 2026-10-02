@@ -151,6 +151,11 @@ def init_db():
         )
     """)
 
+    try:
+        cursor.execute("DELETE FROM transactions WHERE raw_text LIKE '%Your transfer of%' OR raw_text LIKE '%Forex Fast%' OR raw_text LIKE '%[DEBIT%' OR raw_text LIKE '%Transaction Type DEBIT%'")
+    except:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -483,6 +488,28 @@ async def email_webhook(request: Request, background_tasks: BackgroundTasks):
     if not to_field or not text_body:
         raise HTTPException(status_code=400, detail="Missing required email fields: 'to' or 'text'")
         
+    # Filter out outgoing debit notifications & non-transactional marketing
+    subj_lower = (subject or "").lower()
+    body_lower = (text_body or "").lower()
+    combined = subj_lower + " " + body_lower
+    
+    if re.search(r'(?i)\bdebit\b|transfer successful|dr alert|payment sent', subj_lower):
+        return {"status": "Ignored", "reason": "Subject indicates outgoing debit / transfer"}
+    if re.search(r'(?i)transaction\s*type\s*[\:\-]?\s*debit|your transfer of|\bdebit alert\b|\bdebit notification\b|successful debit|you have transferred', body_lower):
+        return {"status": "Ignored", "reason": "Body indicates outgoing debit / transfer"}
+    
+    credit_patterns = [
+        r'\bcredit\b',
+        r'\bcredited\b',
+        r'\breceived\b',
+        r'\bdeposit\b',
+        r'\binflow\b',
+        r'payment received',
+        r'has occurred as detailed below'
+    ]
+    if not any(re.search(cp, combined) for cp in credit_patterns):
+        return {"status": "Ignored", "reason": "No credit/inflow keywords found"}
+        
     # Find merchant_id from the 'to' address (e.g. inflow-B1D71377@bankmirror.com.ng)
     match = re.search(r'inflow-([A-Z0-9]{8})@', to_field, re.IGNORECASE)
     if not match:
@@ -499,8 +526,11 @@ async def email_webhook(request: Request, background_tasks: BackgroundTasks):
         conn.close()
         return {"status": "Failed", "reason": f"Merchant ID {merchant_id} not found in database"}
         
-    # Extract Amount (NGN / ₦ / N / Naira followed by digits)
-    amount_match = re.search(r"(?:NGN|₦|N|NG|Naira)\s?([\d,]+(?:\.\d+)?)", text_body, re.IGNORECASE)
+    # Extract Amount (supports standard 'NGN 1,000.00', '₦1,000.00', and table layouts 'Transaction Amount 1,000.00')
+    amt_pattern = r'(?i)(?:(?:transaction\s+)?amount[\s\:\-]*|(?<![a-zA-Z])(?:NGN|₦|Naira)\s*(?:amount)?[\s\:\-]*)([\d,]+(?:\.\d{2})?)'
+    amount_match = re.search(amt_pattern, text_body)
+    if not amount_match:
+        amount_match = re.search(r"(?:NGN|₦|N|NG|Naira)\s?([\d,]+(?:\.\d+)?)", text_body, re.IGNORECASE)
     if not amount_match:
         conn.close()
         return {"status": "Ignored", "reason": "No transaction amount found in email body"}
@@ -512,8 +542,9 @@ async def email_webhook(request: Request, background_tasks: BackgroundTasks):
         conn.close()
         return {"status": "Failed", "reason": "Failed to parse amount as float"}
         
-    # Extract Reference Number
-    ref_match = re.search(r'(?i)\b(?:ref|reference|txn id|trx|transaction|session id|receipt no|order no)\b[\s\:\-]*([A-Za-z0-9]{6,25})', text_body)
+    # Extract Reference Number across various Nigerian bank email formats
+    ref_pattern = r'(?i)\b(?:ref(?:erence)?(?:\s*(?:no\.?|id|num(?:ber)?))?|txn(?:\s*(?:id|no\.?))?|trx(?:\s*(?:id|no\.?))?|transaction\s+(?:no\.?|id|num(?:ber)?|ref(?:erence)?)|session\s*id|receipt(?:\s*(?:no\.?|num(?:ber)?))?|order(?:\s*(?:no\.?|num(?:ber)?))?)\b[\s\:\-\.]*([A-Za-z0-9]{6,35})'
+    ref_match = re.search(ref_pattern, text_body)
     reference_number = ref_match.group(1) if ref_match else None
     
     # Run validation checks (heuristics & duplicates)

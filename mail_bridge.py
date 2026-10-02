@@ -68,13 +68,13 @@ def heuristic_check(body):
     return True, "Valid"
 
 def extract_and_check_reference(body):
-    # Try to extract a reference number
-    ref_match = re.search(r'(?i)\b(?:ref|reference|txn id|trx|transaction|session id|receipt no|order no)\b[\s\:\-]*([A-Za-z0-9]{6,25})', body)
+    # Try to extract a reference number across various Nigerian bank email formats
+    ref_pattern = r'(?i)\b(?:ref(?:erence)?(?:\s*(?:no\.?|id|num(?:ber)?))?|txn(?:\s*(?:id|no\.?))?|trx(?:\s*(?:id|no\.?))?|transaction\s+(?:no\.?|id|num(?:ber)?|ref(?:erence)?)|session\s*id|receipt(?:\s*(?:no\.?|num(?:ber)?))?|order(?:\s*(?:no\.?|num(?:ber)?))?)\b[\s\:\-\.]*([A-Za-z0-9]{6,35})'
+    ref_match = re.search(ref_pattern, body)
     if not ref_match:
         return None, False, "Missing reference number"
         
     reference_number = ref_match.group(1)
-    
     return reference_number, True, "Valid"
 
 def send_alert_to_backend(raw, amount, merchant_id, reference_number, is_suspicious, suspicious_reason):
@@ -95,11 +95,52 @@ def send_alert_to_backend(raw, amount, merchant_id, reference_number, is_suspici
     except Exception as e:
         print(f"[ERROR] Connection error to backend: {e}")
 
+def is_debit_or_irrelevant(subject, body):
+    subj_lower = subject.lower()
+    body_lower = body.lower()
+    combined = subj_lower + " " + body_lower
+    
+    # 1. Subject-level debit check (e.g. Jaiz Bank [DEBIT NGN...], OPay 'Transfer Successful')
+    if re.search(r'(?i)\bdebit\b|transfer successful|dr alert|payment sent', subj_lower):
+        return True, "Subject indicates outgoing debit / transfer"
+
+    # 2. Body-level debit indicators
+    if re.search(r'(?i)transaction\s*type\s*[\:\-]?\s*debit|your transfer of|\bdebit alert\b|\bdebit notification\b|successful debit|you have transferred', body_lower):
+        return True, "Body indicates outgoing debit / transfer"
+            
+    # 3. Must contain an incoming credit indicator
+    credit_patterns = [
+        r'\bcredit\b',
+        r'\bcredited\b',
+        r'\breceived\b',
+        r'\bdeposit\b',
+        r'\binflow\b',
+        r'payment received',
+        r'has occurred as detailed below'
+    ]
+    has_credit = any(re.search(cp, combined) for cp in credit_patterns)
+    if not has_credit:
+        return True, "No credit/inflow keywords found (marketing or non-transactional email)"
+        
+    return False, "Credit Alert"
+
 def process_email(msg, raw_body):
     body = raw_body
-    print(f"🆕 New Alert Received! Subject: {msg.get('Subject', 'No Subject')}")
+    subject = msg.get('Subject', 'No Subject')
+    print(f"🆕 New Alert Received! Subject: {subject}")
     
-    amount_match = re.search(r"(?:NGN|₦|N|NG|Naira)\s?([\d,]+(?:\.\d+)?)", body, re.IGNORECASE)
+    # Filter out outgoing debit receipts & marketing spam
+    ignored, ignore_reason = is_debit_or_irrelevant(subject, body)
+    if ignored:
+        print(f"[INFO] Ignored: {ignore_reason}")
+        return
+    
+    # Check for amount (supports standard 'NGN 1,000.00', '₦1,000.00', and table layouts 'Transaction Amount 1,000.00')
+    amt_pattern = r'(?i)(?:(?:transaction\s+)?amount[\s\:\-]*|(?<![a-zA-Z])(?:NGN|₦|Naira)\s*(?:amount)?[\s\:\-]*)([\d,]+(?:\.\d{2})?)'
+    amount_match = re.search(amt_pattern, body)
+    if not amount_match:
+        amount_match = re.search(r"(?:NGN|₦|N|NG|Naira)\s?([\d,]+(?:\.\d+)?)", body, re.IGNORECASE)
+
     if amount_match:
         amount = amount_match.group(1)
         
@@ -204,8 +245,10 @@ def start_email_listener():
                                     payload = part.get_payload(decode=True)
                                     if payload:
                                         html_body += payload.decode('utf-8', 'ignore') + " "
-                            if not body.strip() and html_body:
-                                body = extract_text_from_html(html_body)
+                            if html_body:
+                                extracted_html = extract_text_from_html(html_body)
+                                if not body.strip() or len(body.strip()) < len(extracted_html):
+                                    body = extracted_html
                         else:
                             payload = msg.get_payload(decode=True)
                             if payload:
